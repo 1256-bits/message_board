@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>{{ topic.title }}</h2>
+    
+    <div class="messages">
+        {% for message in messages.items %}
+            <div class="message">
+                <div class="message-meta">
+                    {% if message.username %}
+                        <strong>{{ message.username }}</strong> - 
+                    {% else %}
+                        <strong>Anonymous</strong> - 
+                    {% endif %}
+                    {{ message.created_at.strftime('%Y-%m-%d %H:%M') }}
+                </div>
+                <div class="message-content">{{ message.content }}</div>
+            </div>
+        {% endfor %}
+    </div>
+    
+    <div class="pagination">
+        {% if messages.has_prev %}
+            <a href="{{ url_for('view_topic', topic_id=topic.id, page=messages.prev_num) }}">Previous</a>
+        {% endif %}
+        
+        {% for page_num in messages.iter_pages() %}
+            {% if page_num %}
+                {% if messages.page == page_num %}
+                    <strong>{{ page_num }}</strong>
+                {% else %}
+                    <a href="{{ url_for('view_topic', topic_id=topic.id, page=page_num) }}">{{ page_num }}</a>
+                {% endif %}
+            {% else %}
+                ...
+            {% endif %}
+        {% endfor %}
+        
+        {% if messages.has_next %}
+            <a href="{{ url_for('view_topic', topic_id=topic.id, page=messages.next_num) }}">Next</a>
+        {% endif %}
+    </div>
+    
+    <form method="POST" action="{{ url_for('add_message', topic_id=topic.id) }}">
+        <div>
+            <label for="username">Name (optional):</label>
+            <input type="text" id="username" name="username" value="{{ username }}">
+        </div>
+        <div>
+            <label for="content">Message (max 300 chars):</label>
+            <textarea id="content" name="content" maxlength="300" required></textarea>
+        </div>
+        <button type="submit">Post Message</button>
+    </form>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Topics</h2>
+    <a href="{{ url_for('new_topic') }}">Create New Topic</a>
+    
+    <ul>
+        {% for topic in topics %}
+            <li>
+                <a href="{{ url_for('view_topic', topic_id=topic.id) }}">{{ topic.title }}</a>
+                ({{ topic.messages|length }} messages)
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}
