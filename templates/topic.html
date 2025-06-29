@@ -52,7 +52,7 @@
     <form method="POST" action="{{ url_for('add_message', topic_id=topic.id) }}">
         <div>
             <label for="username">Name (optional):</label>
-            <input type="text" id="username" name="username" value="{{ username }}">
+            <input type="text" id="username" name="username" value="{{ username }}" maxlength="20">
         </div>
         <div>
             <label for="content">Message (max 300 chars):</label>
