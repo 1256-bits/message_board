@@ -19,6 +19,7 @@ db = SQLAlchemy(app)
 class Topic(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
+    author = db.Column(db.String(50), nullable=True)
     messages = db.relationship('Message', backref='topic', lazy=True, cascade='all, delete-orphan')
 
 class Message(db.Model):
@@ -82,15 +83,27 @@ def view_topic(topic_id, page=1):
 @app.route('/topic/new', methods=['GET', 'POST'])
 @login_required
 def new_topic():
+    username = request.cookies.get('username') or ''
+    
     if request.method == 'POST':
         title = request.form.get('title')
-        if title:
-            topic = Topic(title=title)
-            db.session.add(topic)
-            db.session.commit()
-            return redirect(url_for('view_topic', topic_id=topic.id))
-        flash('Topic title cannot be empty', 'error')
-    return render_template('new_topic.html')
+        author = request.form.get('username')
+        
+        if not title:
+            flash('Topic title cannot be empty', 'error')
+            return redirect(url_for('new_topic'))
+        
+        topic = Topic(title=title, author=author[:50] if author else None)
+        db.session.add(topic)
+        db.session.commit()
+        
+        response = redirect(url_for('view_topic', topic_id=topic.id))
+        if author:
+            response.set_cookie('username', author, max_age=30*24*60*60)  # 30 days
+        
+        return response
+    
+    return render_template('new_topic.html', username=username)
 
 @app.route('/topic/<int:topic_id>/message', methods=['POST'])
 @login_required

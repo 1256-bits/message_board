@@ -8,7 +8,14 @@
         {% for topic in topics.items %}
             <li>
                 <a href="{{ url_for('view_topic', topic_id=topic.id) }}">{{ topic.title }}</a>
-                ({{ topic.messages|length }} messages)
+                <span class="topic-meta">
+                    {% if topic.author %}
+                        by <strong>{{ topic.author }}</strong> -
+                    {% else %}
+                        by <strong>Anonymous</strong> -
+                    {% endif %}
+                    {{ topic.messages|length }} messages
+                </span>
             </li>
         {% endfor %}
     </ul>

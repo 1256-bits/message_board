@@ -1,7 +1,15 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h2>{{ topic.title }}</h2>
+    <h2>{{ topic.title }}
+    <span class="topic-meta">
+        {% if topic.author %}
+             by <strong>{{ topic.author }}</strong>
+        {% else %}
+             by <strong>Anonymous</strong>
+        {% endif %}
+    </span>
+    </h2>
     
     <div class="messages">
         {% for message in messages.items %}

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Message Board Setup Script with Pagination
+# Message Board Setup Script with Topic Authors and Pagination
 # Creates a password-protected Flask message board with SQLite backend
 
 set -e
@@ -40,7 +40,7 @@ venv/
 .venv/
 EOL
 
-# Create app.py with pagination for both topics and messages
+# Create app.py with topic authors
 cat > app.py << 'EOL'
 import os
 from flask import Flask, render_template, request, redirect, url_for, session, flash
@@ -63,6 +63,7 @@ db = SQLAlchemy(app)
 class Topic(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
+    author = db.Column(db.String(50), nullable=True)
     messages = db.relationship('Message', backref='topic', lazy=True, cascade='all, delete-orphan')
 
 class Message(db.Model):
@@ -126,15 +127,27 @@ def view_topic(topic_id, page=1):
 @app.route('/topic/new', methods=['GET', 'POST'])
 @login_required
 def new_topic():
+    username = request.cookies.get('username') or ''
+    
     if request.method == 'POST':
         title = request.form.get('title')
-        if title:
-            topic = Topic(title=title)
-            db.session.add(topic)
-            db.session.commit()
-            return redirect(url_for('view_topic', topic_id=topic.id))
-        flash('Topic title cannot be empty', 'error')
-    return render_template('new_topic.html')
+        author = request.form.get('username')
+        
+        if not title:
+            flash('Topic title cannot be empty', 'error')
+            return redirect(url_for('new_topic'))
+        
+        topic = Topic(title=title, author=author[:50] if author else None)
+        db.session.add(topic)
+        db.session.commit()
+        
+        response = redirect(url_for('view_topic', topic_id=topic.id))
+        if author:
+            response.set_cookie('username', author, max_age=30*24*60*60)  # 30 days
+        
+        return response
+    
+    return render_template('new_topic.html', username=username)
 
 @app.route('/topic/<int:topic_id>/message', methods=['POST'])
 @login_required
@@ -173,7 +186,7 @@ if __name__ == "__main__":
     app.run()
 EOL
 
-# Create templates with updated pagination
+# Create templates
 # base.html remains the same
 cat > templates/base.html << 'EOL'
 <!DOCTYPE html>
@@ -188,6 +201,7 @@ cat > templates/base.html << 'EOL'
         .messages { margin: 20px 0; }
         .message { border-bottom: 1px solid #eee; padding: 10px 0; }
         .message-meta { font-size: 0.8em; color: #666; margin-bottom: 5px; }
+        .topic-meta { font-size: 0.9em; color: #555; margin: 5px 0; }
         .pagination { margin: 20px 0; }
         .pagination a { margin: 0 5px; }
         form { margin: 20px 0; }
@@ -236,7 +250,7 @@ cat > templates/login.html << 'EOL'
 {% endblock %}
 EOL
 
-# Updated topics.html with pagination
+# Updated topics.html with author display
 cat > templates/topics.html << 'EOL'
 {% extends "base.html" %}
 
@@ -248,7 +262,14 @@ cat > templates/topics.html << 'EOL'
         {% for topic in topics.items %}
             <li>
                 <a href="{{ url_for('view_topic', topic_id=topic.id) }}">{{ topic.title }}</a>
-                ({{ topic.messages|length }} messages)
+                <div class="topic-meta">
+                    {% if topic.author %}
+                        Created by <strong>{{ topic.author }}</strong> - 
+                    {% else %}
+                        Created by <strong>Anonymous</strong> - 
+                    {% endif %}
+                    {{ topic.messages|length }} messages
+                </div>
             </li>
         {% endfor %}
     </ul>
@@ -277,12 +298,19 @@ cat > templates/topics.html << 'EOL'
 {% endblock %}
 EOL
 
-# topic.html remains the same (already has message pagination)
+# Updated topic.html with author display
 cat > templates/topic.html << 'EOL'
 {% extends "base.html" %}
 
 {% block content %}
     <h2>{{ topic.title }}</h2>
+    <div class="topic-meta">
+        {% if topic.author %}
+            Topic created by <strong>{{ topic.author }}</strong>
+        {% else %}
+            Topic created by <strong>Anonymous</strong>
+        {% endif %}
+    </div>
     
     <div class="messages">
         {% for message in messages.items %}
@@ -336,7 +364,7 @@ cat > templates/topic.html << 'EOL'
 {% endblock %}
 EOL
 
-# new_topic.html remains the same
+# Updated new_topic.html with author field
 cat > templates/new_topic.html << 'EOL'
 {% extends "base.html" %}
 
@@ -346,6 +374,10 @@ cat > templates/new_topic.html << 'EOL'
         <div>
             <label for="title">Title:</label>
             <input type="text" id="title" name="title" required>
+        </div>
+        <div>
+            <label for="username">Your Name (optional):</label>
+            <input type="text" id="username" name="username" value="{{ username }}">
         </div>
         <button type="submit">Create Topic</button>
     </form>
