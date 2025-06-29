@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Message Board Setup Script
+# Message Board Setup Script with Pagination
 # Creates a password-protected Flask message board with SQLite backend
 
 set -e
@@ -40,7 +40,7 @@ venv/
 .venv/
 EOL
 
-# Create app.py with fixed decorator
+# Create app.py with pagination for both topics and messages
 cat > app.py << 'EOL'
 import os
 from flask import Flask, render_template, request, redirect, url_for, session, flash
@@ -76,7 +76,7 @@ class Message(db.Model):
 with app.app_context():
     db.create_all()
 
-# Fixed authentication decorator
+# Authentication decorator
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -104,15 +104,17 @@ def logout():
     return redirect(url_for('login'))
 
 @app.route('/')
+@app.route('/topics')
+@app.route('/topics/<int:page>')
 @login_required
-def list_topics():
-    topics = Topic.query.order_by(Topic.id.desc()).all()
+def list_topics(page=1):
+    topics = Topic.query.order_by(Topic.id.desc()).paginate(page=page, per_page=20)
     return render_template('topics.html', topics=topics)
 
 @app.route('/topic/<int:topic_id>')
+@app.route('/topic/<int:topic_id>/<int:page>')
 @login_required
-def view_topic(topic_id):
-    page = request.args.get('page', 1, type=int)
+def view_topic(topic_id, page=1):
     topic = Topic.query.get_or_404(topic_id)
     messages = Message.query.filter_by(topic_id=topic_id).order_by(Message.id.desc()).paginate(page=page, per_page=10)
     
@@ -171,8 +173,8 @@ if __name__ == "__main__":
     app.run()
 EOL
 
-# Create templates
-# base.html
+# Create templates with updated pagination
+# base.html remains the same
 cat > templates/base.html << 'EOL'
 <!DOCTYPE html>
 <html lang="en">
@@ -218,7 +220,7 @@ cat > templates/base.html << 'EOL'
 </html>
 EOL
 
-# login.html
+# login.html remains the same
 cat > templates/login.html << 'EOL'
 {% extends "base.html" %}
 
@@ -234,7 +236,7 @@ cat > templates/login.html << 'EOL'
 {% endblock %}
 EOL
 
-# topics.html
+# Updated topics.html with pagination
 cat > templates/topics.html << 'EOL'
 {% extends "base.html" %}
 
@@ -243,17 +245,39 @@ cat > templates/topics.html << 'EOL'
     <a href="{{ url_for('new_topic') }}">Create New Topic</a>
     
     <ul>
-        {% for topic in topics %}
+        {% for topic in topics.items %}
             <li>
                 <a href="{{ url_for('view_topic', topic_id=topic.id) }}">{{ topic.title }}</a>
                 ({{ topic.messages|length }} messages)
             </li>
         {% endfor %}
     </ul>
+    
+    <div class="pagination">
+        {% if topics.has_prev %}
+            <a href="{{ url_for('list_topics', page=topics.prev_num) }}">Previous</a>
+        {% endif %}
+        
+        {% for page_num in topics.iter_pages() %}
+            {% if page_num %}
+                {% if topics.page == page_num %}
+                    <strong>{{ page_num }}</strong>
+                {% else %}
+                    <a href="{{ url_for('list_topics', page=page_num) }}">{{ page_num }}</a>
+                {% endif %}
+            {% else %}
+                ...
+            {% endif %}
+        {% endfor %}
+        
+        {% if topics.has_next %}
+            <a href="{{ url_for('list_topics', page=topics.next_num) }}">Next</a>
+        {% endif %}
+    </div>
 {% endblock %}
 EOL
 
-# topic.html
+# topic.html remains the same (already has message pagination)
 cat > templates/topic.html << 'EOL'
 {% extends "base.html" %}
 
@@ -312,7 +336,7 @@ cat > templates/topic.html << 'EOL'
 {% endblock %}
 EOL
 
-# new_topic.html
+# new_topic.html remains the same
 cat > templates/new_topic.html << 'EOL'
 {% extends "base.html" %}
 
@@ -330,8 +354,8 @@ EOL
 
 # Create .env with random password and secret key
 cat > .env << EOL
-BOARD_PASSWORD=""
-SECRET_KEY=""
+BOARD_PASSWORD="$PASS"
+SECRET_KEY="$KEY"
 EOL
 
 # Create virtual environment and install requirements

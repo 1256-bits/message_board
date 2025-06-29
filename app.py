@@ -32,7 +32,7 @@ class Message(db.Model):
 with app.app_context():
     db.create_all()
 
-# Fixed authentication decorator
+# Authentication decorator
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -60,15 +60,17 @@ def logout():
     return redirect(url_for('login'))
 
 @app.route('/')
+@app.route('/topics')
+@app.route('/topics/<int:page>')
 @login_required
-def list_topics():
-    topics = Topic.query.order_by(Topic.id.desc()).all()
+def list_topics(page=1):
+    topics = Topic.query.order_by(Topic.id.desc()).paginate(page=page, per_page=20)
     return render_template('topics.html', topics=topics)
 
 @app.route('/topic/<int:topic_id>')
+@app.route('/topic/<int:topic_id>/<int:page>')
 @login_required
-def view_topic(topic_id):
-    page = request.args.get('page', 1, type=int)
+def view_topic(topic_id, page=1):
     topic = Topic.query.get_or_404(topic_id)
     messages = Message.query.filter_by(topic_id=topic_id).order_by(Message.id.desc()).paginate(page=page, per_page=10)
     
