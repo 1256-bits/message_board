@@ -11,6 +11,17 @@
     </span>
     </h2>
     
+    <form method="POST" action="{{ url_for('add_message', topic_id=topic.id) }}">
+        <div>
+            <label for="username">Name (optional):</label>
+            <input type="text" id="username" name="username" value="{{ username }}" maxlength="20">
+        </div>
+        <div>
+            <label for="content">Message (max 300 chars):</label>
+            <textarea id="content" name="content" maxlength="300" required></textarea>
+        </div>
+        <button type="submit">Post Message</button>
+    </form>
     <div class="messages">
         {% for message in messages.items %}
             <div class="message">
@@ -49,15 +60,5 @@
         {% endif %}
     </div>
     
-    <form method="POST" action="{{ url_for('add_message', topic_id=topic.id) }}">
-        <div>
-            <label for="username">Name (optional):</label>
-            <input type="text" id="username" name="username" value="{{ username }}" maxlength="20">
-        </div>
-        <div>
-            <label for="content">Message (max 300 chars):</label>
-            <textarea id="content" name="content" maxlength="300" required></textarea>
-        </div>
-        <button type="submit">Post Message</button>
-    </form>
+
 {% endblock %}
